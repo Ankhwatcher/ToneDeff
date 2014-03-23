@@ -9,6 +9,8 @@ import android.media.AudioTrack;
 import android.os.Bundle;
 import android.text.format.Time;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -31,6 +33,7 @@ public class MainActivity extends Activity {
     private final Double pianoFrequencyPeak = Double.valueOf(3600 - 50);
     @InjectView(R.id.gridView)
     GridView gridView;
+    private ColorAdapter colorAdapter = new ColorAdapter();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,9 +41,54 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         ButterKnife.inject(this);
 
-        gridView.setAdapter(new ColorAdapter());
+        gridView.setAdapter(colorAdapter);
 
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+        if (id == R.id.action_play) {
+            (new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    for (int i = 0; i < colorAdapter.getCount(); i++) {
+                        final int j = i;
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                gridView.smoothScrollToPosition(j);
+                                gridView.requestFocusFromTouch();
+                                gridView.setSelection(j);
+                                gridView.performItemClick(gridView.getAdapter().getView(j, null, null), j, gridView.getAdapter().getItemId(j));
+
+                            }
+                        });
+                        synchronized (this) {
+                            try {
+                                this.wait((long) (duration * 1000));
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }
+            })).start();
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
 
     @OnItemClick(R.id.gridView)
     void gridItemClicked(View view, int position) {
@@ -83,7 +131,8 @@ public class MainActivity extends Activity {
 
 
     private class ColorAdapter extends BaseAdapter {
-
+        final int TAIL = 0;
+        final int ITEM = 1;
         ArrayList<Integer> colorList = new ArrayList<Integer>();
 
         public ColorAdapter() {
@@ -113,8 +162,23 @@ public class MainActivity extends Activity {
         }
 
         @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
+        public int getItemViewType(int i) {
+            if (i == colorList.size() - 1)
+                return TAIL;
+            else
+                return ITEM;
+        }
 
+        @Override
+        public int getViewTypeCount() {
+            return 2;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+           /* switch (getItemViewType(position)) {
+                case ITEM:{
+*/
             if (convertView == null) {
                 convertView = View.inflate(getBaseContext(), R.layout.colored_view, null);
                 ((ImageView) convertView).setAdjustViewBounds(true);
@@ -124,6 +188,11 @@ public class MainActivity extends Activity {
             ((ImageView) convertView).setImageDrawable(colorDrawable);
             return convertView;
 
+         /*   }
+                case TAIL:{
+
+                }
+            }*/
         }
     }
 }
