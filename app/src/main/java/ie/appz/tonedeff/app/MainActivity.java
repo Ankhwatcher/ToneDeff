@@ -8,7 +8,6 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.Bundle;
 import android.text.format.Time;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -30,7 +29,7 @@ public class MainActivity extends Activity {
     private final int sampleRate = 8000;
     private final int numSamples = (int) (duration * sampleRate);
     private final AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, 2 * numSamples, AudioTrack.MODE_STREAM);
-    private final Double pianoFrequencyPeak = Double.valueOf(3600 - 50);
+    private final Double pianoFrequencyPeak = (double) (3600 - 50);
     @InjectView(R.id.gridView)
     GridView gridView;
     private ColorAdapter colorAdapter = new ColorAdapter();
@@ -93,17 +92,17 @@ public class MainActivity extends Activity {
     @OnItemClick(R.id.gridView)
     void gridItemClicked(View view, int position) {
         ColorDrawable colorDrawable = (ColorDrawable) ((ImageView) view).getDrawable();
-        int val = 0xffffffff + colorDrawable.getColor();
-        val = val - 0xaa000000;
-        int colorAvg = (Color.red(val) + Color.blue(val) + Color.red(val)) / 3;
+        if (colorDrawable != null) {
+            int val = 0xffffffff + colorDrawable.getColor();
+            val = val - 0xaa000000;
+            int colorAvg = (Color.red(val) + Color.blue(val) + Color.red(val)) / 3;
 
         double colorOffset = (double) colorAvg / (double) 0xff;
         double pianoFreq = colorOffset * pianoFrequencyPeak + 50;
-        Log.d("AP1", "Color: " + colorDrawable.getColor() + " - " + colorDrawable.getOpacity() + " - " + colorDrawable.getAlpha() + " - " + val + " - " + colorOffset + " - " + pianoFreq);
         byte[] tone = genTone(pianoFreq);
 
         audioTrack.write(tone, 0, tone.length);
-
+        }
         audioTrack.play();
     }
 
