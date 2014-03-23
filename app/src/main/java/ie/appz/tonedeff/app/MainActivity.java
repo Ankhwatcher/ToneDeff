@@ -8,10 +8,13 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.Bundle;
 import android.text.format.Time;
+import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
@@ -30,9 +33,12 @@ public class MainActivity extends Activity {
     private final int numSamples = (int) (duration * sampleRate);
     private final AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, 2 * numSamples, AudioTrack.MODE_STREAM);
     private final Double pianoFrequencyPeak = (double) (3600 - 50);
+
     @InjectView(R.id.gridView)
     GridView gridView;
-    private ColorAdapter colorAdapter = new ColorAdapter();
+    private ColorAdapter colorAdapter = new ColorAdapter(16);
+    private boolean firstRun = true;
+    private boolean isPlaying = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,7 +46,39 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         ButterKnife.inject(this);
 
+
+        DisplayMetrics metrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(metrics);
+        final float density = metrics.density;
         gridView.setAdapter(colorAdapter);
+        ViewTreeObserver vtObserver = gridView.getViewTreeObserver();
+
+        vtObserver.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                if (firstRun) {
+
+                    int columns = (int) ((gridView.getWidth() - density * 10) / (density * 90));
+
+
+                    gridView.setNumColumns(columns);
+                    double rows = (gridView.getHeight() - getActionBar().getHeight() - density * 10) / (density * 90);
+                    Log.d("ToneDeff", "GridView width: " + gridView.getWidth() + " Columns: " + columns + " GridView height: " + (gridView.getHeight() - getActionBar().getHeight()) + " Rows: " + rows);
+                    double n = rows - Math.floor(rows); //This will give you the number
+                    //after the decimal point.
+                   /* if (n < 0.8) {
+                        rows = Math.floor(rows);
+                    } else {
+                        rows = Math.ceil(rows);
+                    }*/
+                    rows = Math.round(rows);
+                    colorAdapter = new ColorAdapter((columns * (int) (rows)));
+                    gridView.setAdapter(colorAdapter);
+                    firstRun = false;
+                }
+            }
+        });
+
 
     }
 
@@ -58,7 +96,8 @@ public class MainActivity extends Activity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-        if (id == R.id.action_play) {
+        if (id == R.id.action_play && !isPlaying) {
+            isPlaying = true;
             (new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -71,7 +110,8 @@ public class MainActivity extends Activity {
                                 gridView.requestFocusFromTouch();
                                 gridView.setSelection(j);
                                 gridView.performItemClick(gridView.getAdapter().getView(j, null, null), j, gridView.getAdapter().getItemId(j));
-
+                                if (j == colorAdapter.getCount() - 1)
+                                    isPlaying = false;
                             }
                         });
                         synchronized (this) {
@@ -97,11 +137,11 @@ public class MainActivity extends Activity {
             val = val - 0xaa000000;
             int colorAvg = (Color.red(val) + Color.blue(val) + Color.red(val)) / 3;
 
-        double colorOffset = (double) colorAvg / (double) 0xff;
-        double pianoFreq = colorOffset * pianoFrequencyPeak + 50;
-        byte[] tone = genTone(pianoFreq);
+            double colorOffset = (double) colorAvg / (double) 0xff;
+            double pianoFreq = colorOffset * pianoFrequencyPeak + 50;
+            byte[] tone = genTone(pianoFreq);
 
-        audioTrack.write(tone, 0, tone.length);
+            audioTrack.write(tone, 0, tone.length);
         }
         audioTrack.play();
     }
@@ -134,11 +174,11 @@ public class MainActivity extends Activity {
         final int ITEM = 1;
         ArrayList<Integer> colorList = new ArrayList<Integer>();
 
-        public ColorAdapter() {
+        public ColorAdapter(int numberOfElements) {
             Time seedTime = new Time();
             seedTime.setToNow();
             Random randomColor = new Random(seedTime.toMillis(true));
-            for (int i = 0; i < 24; i++) {
+            for (int i = 0; i < numberOfElements; i++) {
                 colorList.add(0xaa000000 + randomColor.nextInt(0xFFFFFF));
             }
 
@@ -157,7 +197,7 @@ public class MainActivity extends Activity {
 
         @Override
         public long getItemId(int position) {
-            return 0;
+            return position;
         }
 
         @Override
