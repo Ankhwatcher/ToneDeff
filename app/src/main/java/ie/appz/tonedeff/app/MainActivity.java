@@ -52,32 +52,34 @@ public class MainActivity extends Activity {
         final float density = metrics.density;
         gridView.setAdapter(colorAdapter);
         ViewTreeObserver vtObserver = gridView.getViewTreeObserver();
+        if (vtObserver != null)
+            vtObserver.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    if (firstRun) {
 
-        vtObserver.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                if (firstRun) {
-
-                    int columns = (int) ((gridView.getWidth() - density * 10) / (density * 90));
+                        int columns = (int) ((gridView.getWidth() - density * 10) / (density * 90));
 
 
-                    gridView.setNumColumns(columns);
-                    double rows = (gridView.getHeight() - getActionBar().getHeight() - density * 10) / (density * 90);
-                    Log.d("ToneDeff", "GridView width: " + gridView.getWidth() + " Columns: " + columns + " GridView height: " + (gridView.getHeight() - getActionBar().getHeight()) + " Rows: " + rows);
-                    double n = rows - Math.floor(rows); //This will give you the number
-                    //after the decimal point.
-                   /* if (n < 0.8) {
+                        gridView.setNumColumns(columns);
+                        if (getActionBar() != null) {
+                            double rows = (gridView.getHeight() - getActionBar().getHeight() - density * 10) / (density * 90);
+                            Log.d("ToneDeff", "GridView width: " + gridView.getWidth() + " Columns: " + columns + " GridView height: " + (gridView.getHeight() - getActionBar().getHeight()) + " Rows: " + rows);
+                     /*       double n = rows - Math.floor(rows); //This will give you the number
+                            //after the decimal point.
+                    if (n < 0.8) {
                         rows = Math.floor(rows);
                     } else {
                         rows = Math.ceil(rows);
                     }*/
-                    rows = Math.round(rows);
-                    colorAdapter = new ColorAdapter((columns * (int) (rows)));
-                    gridView.setAdapter(colorAdapter);
-                    firstRun = false;
+                            rows = Math.round(rows);
+                            colorAdapter = new ColorAdapter((columns * (int) (rows)));
+                            gridView.setAdapter(colorAdapter);
+                            firstRun = false;
+                        }
+                    }
                 }
-            }
-        });
+            });
 
 
     }
@@ -135,9 +137,8 @@ public class MainActivity extends Activity {
         if (colorDrawable != null) {
             int val = 0xffffffff + colorDrawable.getColor();
             val = val - 0xaa000000;
-            int colorAvg = (Color.red(val) + Color.blue(val) + Color.red(val)) / 3;
-
-            double colorOffset = (double) colorAvg / (double) 0xff;
+            double colorAvg = (0.299 * Color.red(val) + 0.587 * Color.green(val) + 0.114 * Color.blue(val));
+            double colorOffset = colorAvg / 0xff;
             double pianoFreq = colorOffset * pianoFrequencyPeak + 50;
             byte[] tone = genTone(pianoFreq);
 
